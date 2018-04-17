@@ -1,0 +1,62 @@
+#version 430 core
+
+///////////////////////////////////////////////////////////////////////////////////
+// Calculates collapse errors and optimal placement positions
+//
+// @author Philipp Stiegernigg
+///////////////////////////////////////////////////////////////////////////////////
+
+#include "util.shdr"
+
+#ifdef _compute_
+
+layout(std430, binding = 0) buffer Edges {
+  Edge edges[];
+};
+
+layout(std430, binding = 2) buffer Vertices {
+  Vertex vertices[];
+};
+
+layout(std430, binding = 4) buffer Placement {
+  OptimalPlacement placement[];
+};
+
+uniform uint workSize;
+uniform uint errorThresholdSquared;
+
+layout(local_size_x = WORKGROUPSIZE, local_size_y = 1, local_size_z = 1) in;
+
+void main() {
+  
+  //check work size range
+  uint index = gl_GlobalInvocationID.x;
+  if(index >= workSize) return;
+  
+  //sum up edge quadrics
+  float errorQuadric[10];
+  sumQuadric(errorQuadric, (vertices[edges[index].from]).quadric, (vertices[edges[index].to]).quadric);
+
+  //calculate new vertex position for collapse
+  vec3 position = optimizePosition(errorQuadric);
+  placement[index].posX = position.x;
+  placement[index].posY = position.y;
+  placement[index].posZ = position.z;
+
+  //calculate edge collapse cost
+  edges[index].cost = FloatToUint(vertexQuadricError(errorQuadric, position));
+
+  //mark edges for collapse wich are under the error threshold
+  if(edges[index].cost <= errorThresholdSquared) {
+  	edges[index].state = COLLAPSE;
+        atomicMin((vertices[edges[index].from]).minEdgeCost, edges[index].cost);
+	atomicMin((vertices[edges[index].to]).minEdgeCost, edges[index].cost);
+  }
+  else {
+
+ 	edges[index].state = NOOPERATION;
+  }
+  
+}
+
+#endif // _compute_

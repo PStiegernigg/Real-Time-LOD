@@ -1,0 +1,36 @@
+#version 430 core
+
+///////////////////////////////////////////////////////////////////////////////////
+// Removes all invalid edges and compacts the buffer
+//
+// @author Philipp Stiegernigg
+///////////////////////////////////////////////////////////////////////////////////
+
+#include "util.shdr"
+
+#ifdef _compute_
+
+layout(std430, binding = 0) buffer Edges {
+  Edge edges[];
+};
+
+layout(std430, binding = 1) buffer Temp {
+  Edge temp[];
+};
+
+layout(binding=0, offset=0) uniform atomic_uint validEdgeCount;
+
+uniform uint workSize;
+layout(local_size_x = WORKGROUPSIZE, local_size_y = 1, local_size_z = 1) in;
+
+void main() {
+  
+  //Check work size range
+  uint index = gl_GlobalInvocationID.x;
+  if(!bool(edges[index].valid) || index >= workSize) return;
+  
+  //Insert all valid edges at the beginning of the buffer
+  temp[atomicCounterIncrement(validEdgeCount)] = edges[index];
+}
+
+#endif // _compute_

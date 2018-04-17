@@ -1,0 +1,43 @@
+#version 430 core
+
+///////////////////////////////////////////////////////////////////////////////////
+// Calculates collapse errors and optimal placement positions
+//
+// @author Philipp Stiegernigg
+///////////////////////////////////////////////////////////////////////////////////
+
+#include "util.shdr"
+
+#ifdef _compute_
+
+layout(std430, binding = 0) buffer Edges {
+  Edge edges[];
+};
+
+layout(std430, binding = 2) buffer Vertices {
+  Vertex vertices[];
+};
+
+uniform uint workSize;
+layout(local_size_x = WORKGROUPSIZE, local_size_y = 1, local_size_z = 1) in;
+
+void main() {
+  
+  //check work size range
+  uint index = gl_GlobalInvocationID.x;
+  if(edges[index].state == NOOPERATION || index >= workSize) return;
+
+    if(vertices[edges[index].from].minEdgeCost == edges[index].cost) {
+    	atomicMin(vertices[edges[index].from].minEdgeID, index);
+    }
+    else {
+	edges[index].state == NOOPERATION;
+    }
+
+    if(vertices[edges[index].to].minEdgeCost == edges[index].cost) {
+        atomicMin(vertices[edges[index].to].minEdgeID, index);
+        edges[index].state == COLLAPSE;
+    }        
+}
+
+#endif // _compute_

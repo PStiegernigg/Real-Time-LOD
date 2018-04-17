@@ -1,0 +1,30 @@
+#version 430 core
+
+//
+// Testing shader rendering solid color
+//
+
+#ifdef _vertex_
+
+layout (location = 0) in vec3 vPosition;
+
+uniform mat4 PVM;
+
+void main()
+{
+   gl_Position = PVM * vec4(vPosition.x, vPosition.y, vPosition.z, 1);
+
+}
+
+#endif // _vertex_
+
+#ifdef _fragment_
+
+out vec4 FragColor;
+
+void main()
+{
+    FragColor = vec4(0.8f, 0.8f, 0.8f, 1.0f);
+}
+
+#endif // _fragment_

@@ -1,0 +1,68 @@
+#version 430 core
+
+///////////////////////////////////////////////////////////////////////////////////
+// 
+//
+// @author Philipp Stiegernigg
+///////////////////////////////////////////////////////////////////////////////////
+
+#include "util.shdr"
+
+#ifdef _compute_
+
+layout(std430, binding = 0) buffer Edges {
+  Edge edges[];
+};
+
+layout(std430, binding = 2) buffer Vertices {
+  Vertex vertices[];
+};
+
+layout(std430, binding = 3) buffer Faces {
+  Face faces[];
+};
+
+layout(std430, binding = 7) buffer FaceCollapses {
+  FaceCollapse faceCollapses[];
+};
+
+uniform uint workSize;
+layout(local_size_x = WORKGROUPSIZE, local_size_y = 1, local_size_z = 1) in;
+
+void main() {
+  
+  //check work size range
+  uint index = gl_GlobalInvocationID.x;
+  if(index >= workSize) return;
+
+  uint collapseVertex;
+  
+  if(edges[index].from == vertices[edges[index].to].collapseTarget) {
+    	collapseVertex = edges[index].to;
+  }
+  else if(edges[index].to == vertices[edges[index].from].collapseTarget) {
+    	collapseVertex = edges[index].from;
+  }
+  
+  edges[index].from = vertices[edges[index].from].collapseTarget; 
+  edges[index].to = vertices[edges[index].to].collapseTarget;
+
+  if(edges[index].from == edges[index].to) {
+	edges[index].valid = FALSE;
+  }
+  else {
+	return;
+  }
+
+  bool faceValid = bool(faces[edges[index].face].valid); 
+
+  if(faceValid && !bool(atomicExchange(faceCollapses[collapseVertex].faceOneSet, 1))) {
+	faceCollapses[collapseVertex].faceOne = edges[index].face; 
+  }
+  else if(faceValid) {
+	faceCollapses[collapseVertex].faceTwo = edges[index].face;
+  }
+
+}
+
+#endif // _compute_

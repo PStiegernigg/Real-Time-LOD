@@ -1,0 +1,51 @@
+/build
+/bin/RTLOD
+/vendor/glew-2.1.0/lib
+/vendor/AntTweakBar/lib
+/vendor/glfw-3.2.1/src
+/vendor/assimp-3.3.1/lib
+
+# OS generated files #
+######################
+# generic files to ignore
+# backup files (*~) and vim swap file (.swp), MacOS dir file (.DS_Store)
+*~
+*.lock
+*.DS_Store
+*.DS_Store?
+*.swp
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+ehthumbs.db
+Thumbs.db
+*.bak
+*.pch
+
+# Compiled source #
+###################
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+*.a
+*.lib
+*h.gch
+
+# Packages #
+############
+# it's better to unpack these files and commit the raw source
+# git has its own built in compression methods
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+*.xz
+*.tgz

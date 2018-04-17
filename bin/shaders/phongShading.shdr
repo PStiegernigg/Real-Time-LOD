@@ -1,0 +1,52 @@
+#version 430 core
+
+///////////////////////////////////////////////////////////////////////////////////
+// Phong shader
+// @author Philipp Stiegernigg
+///////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _vertex_
+
+layout (location = 0) in vec3 vPosition;
+
+layout(std430, binding = 0) buffer Normals {
+  float normal[];
+};
+
+out vec3 Normal;
+
+uniform mat4 MVP;
+
+void main()
+{
+   gl_Position = MVP * vec4(vPosition.x, vPosition.y, vPosition.z, 1);
+   Normal = vec3(normal[3*gl_VertexID], normal[3*gl_VertexID + 1], normal[3*gl_VertexID + 2]);
+}
+
+#endif // _vertex_
+
+#ifdef _fragment_
+
+in vec3 Normal;
+uniform vec3 vecToCamera;
+
+vec4 LightPosition = vec4(-50.0, 10.0, 50.0, 1.0);
+vec3 LightIntensity = vec3(1.0, 1.0, 1.0);
+vec3 Ka = vec3(0.1, 0.1, 0.1);
+vec3 Kd = vec3(0.2, 0.2, 0.2);
+vec3 Ks = vec3(0.3, 0.3, 0.3);
+
+float Shininess = 5;
+
+layout(location = 0) out vec4 FragColor;
+
+void main() {
+	
+	vec3 n = normalize(Normal);
+	vec3 s = normalize(vec3(LightPosition));
+	vec3 r = reflect(-s, n);
+
+	FragColor = vec4(LightIntensity * (Ka + Kd * max(dot(s, n), 0.0) + Ks * pow(max(dot(r, vecToCamera), 0.0), Shininess)), 1.0);
+}
+
+#endif // _fragment_

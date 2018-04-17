@@ -1,0 +1,69 @@
+#version 430 core
+
+///////////////////////////////////////////////////////////////////////////////////
+// Initializes the quadric metric of all vertices
+//
+// @author Philipp Stiegernigg
+///////////////////////////////////////////////////////////////////////////////////
+
+#extension GL_NV_shader_atomic_float : require
+
+#include "util.shdr"
+
+#ifdef _compute_
+
+layout(std430, binding = 2) buffer Vertices {
+  Vertex vertices[];
+};
+
+layout(std430, binding = 5) buffer VerticesAttrib {
+  float position[];
+};
+
+layout(std430, binding = 6) buffer Indices {
+  uint indices[];
+};
+
+uniform uint workSize;
+
+layout(local_size_x = WORKGROUPSIZE, local_size_y = 1, local_size_z = 1) in;
+
+void main() {
+  uint index = gl_GlobalInvocationID.x;
+  if(index >= workSize) return;
+
+  uvec3 faceIndices = uvec3(indices[index * 3], indices[index * 3 + 1], indices[index * 3 + 2]);
+
+  //Calculating face normal
+  vec3 vpos1 = vec3(position[3 * faceIndices[0]], position[3 * faceIndices[0] + 1], position[3 * faceIndices[0] + 2]);
+  vec3 vpos2 = vec3(position[3 * faceIndices[1]], position[3 * faceIndices[1] + 1], position[3 * faceIndices[1] + 2]);
+  vec3 vpos3 = vec3(position[3 * faceIndices[2]], position[3 * faceIndices[2] + 1], position[3 * faceIndices[2] + 2]);
+  
+  vec3 v = vpos2 - vpos1;
+  vec3 u = vpos3 - vpos1;
+  
+  vec3 normal = normalize(cross(u, v));  
+  
+  float faceQuadric[10];
+
+  setQuadric(faceQuadric, normal, dot(-normal, vpos1));
+  
+  for(uint i = 0; i < 10; i++) {
+  	atomicAdd(vertices[faceIndices[0]].quadric[i], faceQuadric[i]);
+  }
+
+  setQuadric(faceQuadric, normal, dot(-normal, vpos2));
+  
+  for(uint i = 0; i < 10; i++) {
+  	atomicAdd(vertices[faceIndices[1]].quadric[i], faceQuadric[i]);
+  }
+
+  setQuadric(faceQuadric, normal, dot(-normal, vpos3));
+  
+  for(uint i = 0; i < 10; i++) {
+  	atomicAdd(vertices[faceIndices[2]].quadric[i], faceQuadric[i]);
+  }
+
+}
+
+#endif // _compute_

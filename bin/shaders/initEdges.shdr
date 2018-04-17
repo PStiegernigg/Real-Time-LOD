@@ -1,0 +1,54 @@
+#version 430 core
+
+///////////////////////////////////////////////////////////////////////////////////
+// Initializes all edges from the indices list of the mesh
+//
+// @author Philipp Stiegernigg
+///////////////////////////////////////////////////////////////////////////////////
+
+#include "util.shdr"
+
+#ifdef _compute_
+
+layout(std430, binding = 0) buffer Edges {
+  Edge edges[];
+};
+
+layout(std430, binding = 3) buffer Faces {
+  Face faces[];
+};
+
+layout(std430, binding = 6) buffer Indices {
+  uint indices[];
+};
+
+uniform uint workSize;
+
+layout(local_size_x = WORKGROUPSIZE, local_size_y = 1, local_size_z = 1) in;
+
+void main() {
+  uint index = gl_GlobalInvocationID.x;
+  
+  if(index >= workSize) return;
+  
+  faces[index].valid = TRUE;
+  uvec3 faceIndices = uvec3(indices[index * 3], indices[index * 3 + 1], indices[index * 3 + 2]);
+
+  edges[index * 3].from = min(faceIndices[0], faceIndices[1]);
+  edges[index * 3].to = max(faceIndices[0], faceIndices[1]);
+  edges[index * 3].face = index;
+  edges[index * 3].valid = TRUE;
+
+  edges[index * 3 + 1].from = min(faceIndices[1], faceIndices[2]);
+  edges[index * 3 + 1].to = max(faceIndices[1], faceIndices[2]);
+  edges[index * 3 + 1].face = index;
+  edges[index * 3 + 1].valid = TRUE;
+
+  edges[index * 3 + 2].from = min(faceIndices[2], faceIndices[0]);
+  edges[index * 3 + 2].to = max(faceIndices[2], faceIndices[0]);
+  edges[index * 3 + 2].face = index;
+  edges[index * 3 + 2].valid = TRUE;
+  
+}
+
+#endif // _compute_

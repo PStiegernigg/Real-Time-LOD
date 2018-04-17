@@ -1,0 +1,114 @@
+///////////////////////////////////////////////////////////////////////////////////
+// Provides definitions and utility functions used by GPU computations
+//
+// @author Philipp Stiegernigg
+///////////////////////////////////////////////////////////////////////////////////
+
+#extension GL_NV_shader_atomic_float : enable
+
+#define WORKGROUPSIZE 256
+
+//Define states and boolean constants
+#define NOOPERATION 0
+#define COLLAPSE 1
+#define FALSE 0
+#define TRUE 1
+
+struct Edge {
+    uint from;
+    uint to;
+    uint face;
+    uint cost;
+    uint state;
+    uint valid;
+};
+
+struct Vertex {
+    float quadric[10];
+    uint minEdgeCost;
+    uint minEdgeID;
+    uint collapseTarget;
+    uint valid;
+};
+
+struct OptimalPlacement {
+    float posX;
+    float posY;
+    float posZ;
+};
+
+struct Face {
+    uint valid;
+};
+
+struct FaceCollapse {
+    uint faceOne;
+    uint faceTwo;
+    uint faceOneSet;
+};
+
+struct HierarchyInformation {
+    uint startPtr;
+    uint currentCollapse;
+};
+
+uint FloatToUint(float f)
+{
+	uint floatToUint = floatBitsToUint(f);
+	uint mask = -int(floatToUint >> 31) | 0x80000000;
+	return floatToUint ^ mask;
+}
+
+uint InvertetFloatFlip(uint f)
+{
+	uint mask = ((f >> 31) - 1) | 0x80000000;
+	return f ^ mask;
+}
+
+void setQuadric(inout float quadric[10], in vec3 normal, in float dist) {
+	quadric[0] = normal.x*normal.x;  quadric[1] = normal.x*normal.y;  quadric[2] = normal.x*normal.z;  quadric[3] = normal.x*dist;
+		                         quadric[4] = normal.y*normal.y;  quadric[5] = normal.y*normal.z;  quadric[6] = normal.y*dist;
+			                                                  quadric[7] = normal.z*normal.z;  quadric[8] = normal.z*dist;
+					                                                                   quadric[9]   =   dist*dist;
+}
+
+void sumQuadric(inout float quadricSum[10], in float quadricFrom[10], in float quadricTo[10]) {
+	quadricSum[0] = quadricFrom[0] + quadricTo[0]; 	quadricSum[1] = quadricFrom[1] + quadricTo[1]; 	quadricSum[2] = quadricFrom[2] + quadricTo[2]; 	quadricSum[3] = quadricFrom[3] + quadricTo[3];
+							quadricSum[4] = quadricFrom[4] + quadricTo[4]; 	quadricSum[5] = quadricFrom[5] + quadricTo[5]; 	quadricSum[6] = quadricFrom[6] + quadricTo[6];
+													quadricSum[7] = quadricFrom[7] + quadricTo[7]; 	quadricSum[8] = quadricFrom[8] + quadricTo[8];
+																			quadricSum[9] = quadricFrom[9] + quadricTo[9]; 
+					                                                                   
+}
+
+float determinant(in float quadric[10], 
+	   int a11, int a12, int a13,
+           int a21, int a22, int a23,
+           int a31, int a32, int a33) {
+
+    	return quadric[a11]*quadric[a22]*quadric[a33] + quadric[a13]*quadric[a21]*quadric[a32] + quadric[a12]*quadric[a23]*quadric[a31]
+		- quadric[a13]*quadric[a22]*quadric[a31] - quadric[a11]*quadric[a23]*quadric[a32] - quadric[a12]*quadric[a21]*quadric[a33];
+}
+
+
+vec3 optimizePosition(in float quadric[10]) {
+	vec3 p = vec3(0.0f, 0.0f, 0.0f);
+        float det = determinant(quadric, 0, 1, 2, 1, 4, 5, 2, 5, 7);
+        
+	//TODO Consider case determinant=0 ?
+	if(det != 0) {
+ 		p.x = -1/det*determinant(quadric, 1, 2, 3, 4, 5, 6, 5, 7 , 8);
+		p.y = 1/det*determinant(quadric, 0, 2, 3, 1, 5, 6, 2, 7 , 8); 
+		p.z = -1/det*determinant(quadric, 0, 1, 3, 1, 4, 6, 2, 5,  8);
+	}
+
+	return p;
+}
+
+float vertexQuadricError(in float quadric[10], vec3 p) {
+ 	return   quadric[0]*p.x*p.x + 2*quadric[1]*p.x*p.y + 2*quadric[2]*p.x*p.z + 2*quadric[3]*p.x + quadric[4]*p.y*p.y
+ 		 + 2*quadric[5]*p.y*p.z + 2*quadric[6]*p.y + quadric[7]*p.z*p.z + 2*quadric[8]*p.z + quadric[9];
+}
+
+
+
+

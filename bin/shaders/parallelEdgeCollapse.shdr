@@ -1,0 +1,58 @@
+#version 430 core
+
+///////////////////////////////////////////////////////////////////////////////////
+// Calculates collapse errors and optimal placement positions
+//
+// @author Philipp Stiegernigg
+///////////////////////////////////////////////////////////////////////////////////
+
+#include "util.shdr"
+
+#ifdef _compute_
+
+layout(std430, binding = 0) buffer Edges {
+  Edge edges[];
+};
+
+layout(std430, binding = 2) buffer Vertices {
+  Vertex vertices[];
+};
+
+layout(std430, binding = 4) buffer Placement {
+  OptimalPlacement placement[];
+};
+
+layout(std430, binding = 5) buffer VertexAttrib {
+  float position[];
+};
+
+layout(std430, binding = 8) buffer CollapsePlacement {
+  OptimalPlacement collapsePlacement[];
+};
+
+
+uniform uint workSize;
+uniform uint decimationPass;
+layout(local_size_x = WORKGROUPSIZE, local_size_y = 1, local_size_z = 1) in;
+
+void main() {
+  
+  //check work size range
+  uint index = gl_GlobalInvocationID.x;
+  if(edges[index].state == NOOPERATION || index >= workSize) return;
+
+  if(vertices[edges[index].from].minEdgeID == index && vertices[edges[index].to].minEdgeID == index) {
+	position[edges[index].to * 3] = placement[index].posX;
+ 	position[edges[index].to * 3 + 1] = placement[index].posY;
+	position[edges[index].to * 3 + 2] = placement[index].posZ;
+
+	sumQuadric(vertices[edges[index].to].quadric, vertices[edges[index].from].quadric, vertices[edges[index].to].quadric);
+       	vertices[edges[index].from].collapseTarget = edges[index].to;
+	vertices[edges[index].from].valid = FALSE;
+        vertices[edges[index].from].minEdgeID = decimationPass;
+	collapsePlacement[edges[index].from] = placement[index];	
+  }
+   
+}
+
+#endif // _compute_
