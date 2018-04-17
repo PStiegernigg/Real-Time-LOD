@@ -1,8 +1,5 @@
 /build
 /bin/RTLOD
-/vendor/glew-2.1.0/lib
-/vendor/AntTweakBar/lib
-/vendor/assimp-3.3.1/lib
 
 # OS generated files #
 ######################
